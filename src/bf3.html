@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Brute Force Visualization - Vintage CRT</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #0a0f0a;
+            font-family: 'Courier New', monospace;
+            color: #2d4a2d;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        /* CRT Screen Effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(18, 40, 18, 0.15) 2px,
+                    rgba(18, 40, 18, 0.15) 4px
+                );
+            pointer-events: none;
+            z-index: 1000;
+            animation: scanlines 0.1s linear infinite;
+        }
+        
+        /* Phosphor burn-in effect */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse at center, 
+                    rgba(45, 74, 45, 0.0) 0%, 
+                    rgba(10, 15, 10, 0.3) 100%);
+            pointer-events: none;
+            z-index: 999;
+        }
+        
+        @keyframes scanlines {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(4px); }
+        }
+        
+        .container {
+            text-align: center;
+            width: 100%;
+            filter: 
+                contrast(1.2) 
+                brightness(0.8) 
+                blur(0.3px);
+        }
+        
+        .title {
+            color: #5a3a3a;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-shadow: 
+                0 0 10px rgba(90, 58, 58, 0.7),
+                0 0 20px rgba(90, 58, 58, 0.4);
+            animation: pulse 2s infinite;
+            letter-spacing: 2px;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.9; }
+            50% { opacity: 0.6; }
+        }
+        
+        .password-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            margin: 40px 0;
+        }
+        
+        .password-row {
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+        }
+        
+        .password-row .char-block:nth-child(7) {
+            margin-right: 20px;
+        }
+        
+        .char-block {
+            width: 24px;
+            height: 32px;
+            background: #0f1a0f;
+            border: 1px solid rgba(45, 74, 45, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+            border-radius: 1px;
+            box-shadow: 
+                inset 0 0 3px rgba(45, 74, 45, 0.2),
+                0 0 3px rgba(45, 74, 45, 0.3);
+            opacity: 0.85;
+            transition: all 0.08s ease-in-out;
+            
+            /* Hexagonal pixel effect */
+            clip-path: polygon(
+                20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%
+            );
+        }
+        
+        .char-block::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(
+                    45deg,
+                    rgba(45, 74, 45, 0.1) 25%,
+                    transparent 25%,
+                    transparent 50%,
+                    rgba(45, 74, 45, 0.1) 50%,
+                    rgba(45, 74, 45, 0.1) 75%,
+                    transparent 75%
+                );
+            background-size: 4px 4px;
+            pointer-events: none;
+        }
+        
+        .char-block.active {
+            background: #1a2f1a;
+            box-shadow: 
+                inset 0 0 5px rgba(45, 74, 45, 0.4),
+                0 0 8px rgba(45, 74, 45, 0.6),
+                0 0 12px rgba(45, 74, 45, 0.3);
+            opacity: 1;
+            animation: charFlash 0.05s ease-in-out;
+            color: #4a7a4a;
+            text-shadow: 
+                0 0 3px rgba(74, 122, 74, 0.8),
+                0 0 6px rgba(74, 122, 74, 0.4);
+        }
+        
+        @keyframes charFlash {
+            0% { 
+                opacity: 0.3; 
+                transform: scale(0.95);
+            }
+            50% { 
+                opacity: 1.2; 
+                transform: scale(1.02);
+            }
+            100% { 
+                opacity: 1; 
+                transform: scale(1);
+            }
+        }
+        
+        .char-block.fade-in {
+            animation: fadeIn 0.12s ease-in-out;
+        }
+        
+        .char-block.fade-out {
+            animation: fadeOut 0.08s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { 
+                opacity: 0.3; 
+                filter: blur(1px);
+            }
+            to { 
+                opacity: 0.85; 
+                filter: blur(0.3px);
+            }
+        }
+        
+        @keyframes fadeOut {
+            from { 
+                opacity: 0.85; 
+                filter: blur(0.3px);
+            }
+            to { 
+                opacity: 0.4; 
+                filter: blur(0.8px);
+            }
+        }
+        
+        .stats {
+            color: #3a5a3a;
+            font-size: 12px;
+            margin-top: 20px;
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+            filter: brightness(0.7);
+        }
+        
+        .stat {
+            padding: 4px 8px;
+            border: 1px solid rgba(58, 90, 58, 0.6);
+            border-radius: 2px;
+            background: rgba(15, 26, 15, 0.8);
+            text-shadow: 0 0 2px rgba(58, 90, 58, 0.5);
+        }
+        
+        .progress-bar {
+            width: 400px;
+            height: 16px;
+            border: 1px solid rgba(45, 74, 45, 0.7);
+            margin: 20px auto;
+            background: #0f1a0f;
+            position: relative;
+            border-radius: 2px;
+            overflow: hidden;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: 
+                linear-gradient(90deg, 
+                    rgba(74, 122, 74, 0.8), 
+                    rgba(90, 58, 58, 0.7));
+            width: 0%;
+            transition: width 0.1s;
+            border-radius: 2px;
+            box-shadow: 
+                0 0 3px rgba(74, 122, 74, 0.6),
+                inset 0 0 2px rgba(255, 255, 255, 0.1);
+        }
+        
+        .matrix-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.06;
+            pointer-events: none;
+            z-index: -1;
+            filter: blur(0.5px);
+        }
+        
+        /* Vintage CRT flicker */
+        .container {
+            animation: crtFlicker 0.15s infinite linear alternate;
+        }
+        
+        @keyframes crtFlicker {
+            0% { opacity: 0.95; }
+            2% { opacity: 0.94; }
+            4% { opacity: 0.96; }
+            19% { opacity: 0.93; }
+            21% { opacity: 0.95; }
+            23% { opacity: 0.97; }
+            80% { opacity: 0.96; }
+            83% { opacity: 0.93; }
+            87% { opacity: 0.95; }
+            100% { opacity: 0.94; }
+        }
+        
+        /* Streaky perspex effect */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                linear-gradient(
+                    95deg,
+                    transparent 40%,
+                    rgba(45, 74, 45, 0.03) 50%,
+                    transparent 60%
+                ),
+                linear-gradient(
+                    85deg,
+                    transparent 30%,
+                    rgba(10, 15, 10, 0.05) 50%,
+                    transparent 70%
+                );
+            pointer-events: none;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="matrix-bg" id="matrixBg"></div>
+    
+    <div class="container">
+        <div class="title">BRUTE FORCE ATTACK IN PROGRESS</div>
+        
+        <div class="password-grid" id="passwordGrid"></div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat">Attempts: <span id="attempts">0</span></div>
+            <div class="stat">Speed: <span id="speed">0</span> ops/sec</div>
+            <div class="stat">Time: <span id="time">00:00</span></div>
+            <div class="stat">Progress: <span id="progress">0.00%</span></div>
+        </div>
+    </div>
+
+    <script>
+        // Character sets for different types of cycling
+        const charSets = {
+            alpha: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
+            numeric: '0123456789',
+            symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?`~',
+            unicode: 'αβγδεζηθικλμνξοπρστυφχψω∑∞∆∇∂∫≈≠≤≥±×÷√∏∈∃∀∧∨¬⊕⊗⊙⊥⊂⊃⊆⊇∪∩',
+            extended: '♠♣♥♦★☆♪♫☯☢☣☤☮☸☹☺☻♀♂♠♣♥♦░▒▓█▄▌▐▀■□▪▫▬►◄▲▼◆◇○●◊',
+            matrix: 'ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ0123456789',
+            all: ''
+        };
+        
+        // Combine all character sets
+        charSets.all = charSets.alpha + charSets.numeric + charSets.symbols + charSets.unicode + charSets.extended;
+        
+        const passwords = [
+            'password123456',
+            'admin2024login',
+            'qwertyuiopas',
+            'letmein12345',
+            'welcome123ok',
+            'secret1234567',
+            'P@ssw0rd!2024',
+            '1234567890abc'
+        ];
+        
+        let currentPasswordIndex = 0;
+        let currentPassword = passwords[currentPasswordIndex];
+        let charElements = [];
+        let attempts = 0;
+        let startTime = Date.now();
+        let crackedPositions = new Set();
+        
+        function createPasswordGrid() {
+            const grid = document.getElementById('passwordGrid');
+            grid.innerHTML = '';
+            
+            // Create 4 rows of password attempts, each 14 characters wide
+            for (let row = 0; row < 4; row++) {
+                const passwordRow = document.createElement('div');
+                passwordRow.className = 'password-row';
+                
+                const rowElements = [];
+                for (let i = 0; i < 14; i++) {
+                    const charBlock = document.createElement('div');
+                    charBlock.className = 'char-block';
+                    charBlock.textContent = getRandomChar();
+                    passwordRow.appendChild(charBlock);
+                    rowElements.push(charBlock);
+                }
+                
+                grid.appendChild(passwordRow);
+                charElements.push(rowElements);
+            }
+        }
+        
+        function getRandomChar() {
+            const chars = charSets.all;
+            return chars[Math.floor(Math.random() * chars.length)];
+        }
+        
+        function cycleCharacters() {
+            charElements.forEach((row, rowIndex) => {
+                row.forEach((charElement, charIndex) => {
+                    // Don't cycle if this position is already cracked (for actual password positions)
+                    if (charIndex < currentPassword.length && crackedPositions.has(charIndex)) {
+                        charElement.textContent = currentPassword[charIndex];
+                        charElement.className = 'char-block';
+                        return;
+                    }
+                    
+                    // Different cycling speeds and patterns for each position (7x faster!)
+                    const speed = 7 + (charIndex * 3 + rowIndex * 2) % 15; // Much faster!
+                    const offset = (charIndex * 7 + rowIndex * 11) % charSets.all.length;
+                    
+                    if (Math.random() < 0.8) { // 80% chance to update each cycle for more chaos
+                        // Add fade out effect
+                        charElement.classList.add('fade-out');
+                        
+                        setTimeout(() => {
+                            const charIndex2 = (Math.floor(Date.now() / speed) + offset) % charSets.all.length;
+                            charElement.textContent = charSets.all[charIndex2];
+                            
+                            // Remove fade out and add fade in
+                            charElement.classList.remove('fade-out');
+                            charElement.classList.add('fade-in');
+                            
+                            // For password positions, occasionally show the correct character
+                            if (charIndex < currentPassword.length && Math.random() < 0.08) {
+                                charElement.textContent = currentPassword[charIndex];
+                                charElement.className = 'char-block active';
+                                
+                                // Sometimes "lock in" the correct character
+                                if (Math.random() < 0.03) {
+                                    crackedPositions.add(charIndex);
+                                }
+                            } else {
+                                charElement.className = 'char-block';
+                            }
+                            
+                            // Clean up fade classes after animation
+                            setTimeout(() => {
+                                charElement.classList.remove('fade-in');
+                            }, 120);
+                            
+                        }, 40); // Brief delay for fade effect
+                    }
+                });
+            });
+            
+            attempts++;
+            updateStats();
+            
+            // Check if password is fully cracked
+            if (crackedPositions.size === currentPassword.length) {
+                setTimeout(() => {
+                    currentPasswordIndex = (currentPasswordIndex + 1) % passwords.length;
+                    currentPassword = passwords[currentPasswordIndex];
+                    crackedPositions.clear();
+                    createPasswordGrid();
+                }, 2000);
+            }
+        }
+        
+        function updateStats() {
+            const elapsed = (Date.now() - startTime) / 1000;
+            const speed = Math.floor(attempts / elapsed);
+            const progress = currentPassword.length > 0 ? (crackedPositions.size / currentPassword.length) * 100 : 0;
+            
+            document.getElementById('attempts').textContent = attempts.toLocaleString();
+            document.getElementById('speed').textContent = speed.toLocaleString();
+            document.getElementById('time').textContent = formatTime(elapsed);
+            document.getElementById('progress').textContent = progress.toFixed(2);
+            document.getElementById('progressFill').style.width = progress + '%';
+        }
+        
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        function createMatrixBackground() {
+            const bg = document.getElementById('matrixBg');
+            for (let i = 0; i < 80; i++) {
+                const char = document.createElement('div');
+                char.style.position = 'absolute';
+                char.style.left = Math.random() * 100 + '%';
+                char.style.top = Math.random() * 100 + '%';
+                char.style.color = 'rgba(45, 74, 45, 0.4)';
+                char.style.fontSize = '10px';
+                char.style.animation = `fall ${3 + Math.random() * 4}s linear infinite`;
+                char.textContent = charSets.matrix[Math.floor(Math.random() * charSets.matrix.length)];
+                bg.appendChild(char);
+                
+                char.style.animationDelay = Math.random() * 3 + 's';
+            }
+        }
+        
+        // Add CSS for falling animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fall {
+                from { transform: translateY(-20px); opacity: 0.4; }
+                to { transform: translateY(100vh); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Initialize
+        createPasswordGrid();
+        createMatrixBackground();
+        
+        // Start the chaos! (Smooth 15ms intervals)
+        setInterval(cycleCharacters, 15);
+        
+        // Update matrix background periodically
+        setInterval(() => {
+            document.querySelectorAll('#matrixBg div').forEach(char => {
+                char.textContent = charSets.matrix[Math.floor(Math.random() * charSets.matrix.length)];
+            });
+        }, 150);
+    </script>
+</body>
+</html>

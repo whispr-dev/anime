@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Brute Force Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            font-family: 'Courier New', monospace;
+            color: #00ff41;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        
+        .container {
+            text-align: center;
+            width: 100%;
+        }
+        
+        .title {
+            color: #ff0040;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #ff0040;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .password-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            margin: 40px 0;
+        }
+        
+        .password-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+        
+        .char-block {
+            width: 30px;
+            height: 40px;
+            background: #001100;
+            border: 1px solid #00ff41;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+            border-radius: 3px;
+            box-shadow: 0 0 5px #00ff41;
+        }
+        
+        .char-block.active {
+            background: #004400;
+            box-shadow: 0 0 15px #00ff41;
+            animation: flash 0.1s infinite;
+        }
+        
+        @keyframes flash {
+            0%, 100% { background: #004400; }
+            50% { background: #006600; }
+        }
+        
+        .stats {
+            color: #00ff41;
+            font-size: 14px;
+            margin-top: 20px;
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .stat {
+            padding: 5px 10px;
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            background: rgba(0, 255, 65, 0.1);
+        }
+        
+        .progress-bar {
+            width: 400px;
+            height: 20px;
+            border: 1px solid #00ff41;
+            margin: 20px auto;
+            background: #001100;
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff41, #ff0040);
+            width: 0%;
+            transition: width 0.1s;
+            border-radius: 10px;
+        }
+        
+        .matrix-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.1;
+            pointer-events: none;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="matrix-bg" id="matrixBg"></div>
+    
+    <div class="container">
+        <div class="title">BRUTE FORCE ATTACK IN PROGRESS</div>
+        
+        <div class="password-grid" id="passwordGrid"></div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat">Attempts: <span id="attempts">0</span></div>
+            <div class="stat">Speed: <span id="speed">0</span> ops/sec</div>
+            <div class="stat">Time: <span id="time">00:00</span></div>
+            <div class="stat">Progress: <span id="progress">0.00%</span></div>
+        </div>
+    </div>
+
+    <script>
+        // Character sets for different types of cycling
+        const charSets = {
+            alpha: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
+            numeric: '0123456789',
+            symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?`~',
+            unicode: 'αβγδεζηθικλμνξοπρστυφχψω∑∞∆∇∂∫≈≠≤≥±×÷√∏∈∃∀∧∨¬⊕⊗⊙⊥⊂⊃⊆⊇∪∩',
+            extended: '♠♣♥♦★☆♪♫☯☢☣☤☮☸☹☺☻♀♂♠♣♥♦░▒▓█▄▌▐▀■□▪▫▬►◄▲▼◆◇○●◊',
+            matrix: 'ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ0123456789',
+            all: ''
+        };
+        
+        // Combine all character sets
+        charSets.all = charSets.alpha + charSets.numeric + charSets.symbols + charSets.unicode + charSets.extended;
+        
+        const passwords = [
+            'password123',
+            'admin',
+            'qwerty',
+            'letmein',
+            'welcome',
+            'secret123',
+            'P@ssw0rd!',
+            '12345678'
+        ];
+        
+        let currentPasswordIndex = 0;
+        let currentPassword = passwords[currentPasswordIndex];
+        let charElements = [];
+        let attempts = 0;
+        let startTime = Date.now();
+        let crackedPositions = new Set();
+        
+        function createPasswordGrid() {
+            const grid = document.getElementById('passwordGrid');
+            grid.innerHTML = '';
+            
+            // Create 4 rows of password attempts
+            for (let row = 0; row < 4; row++) {
+                const passwordRow = document.createElement('div');
+                passwordRow.className = 'password-row';
+                
+                const rowElements = [];
+                for (let i = 0; i < currentPassword.length; i++) {
+                    const charBlock = document.createElement('div');
+                    charBlock.className = 'char-block';
+                    charBlock.textContent = getRandomChar();
+                    passwordRow.appendChild(charBlock);
+                    rowElements.push(charBlock);
+                }
+                
+                grid.appendChild(passwordRow);
+                charElements.push(rowElements);
+            }
+        }
+        
+        function getRandomChar() {
+            const chars = charSets.all;
+            return chars[Math.floor(Math.random() * chars.length)];
+        }
+        
+        function cycleCharacters() {
+            charElements.forEach((row, rowIndex) => {
+                row.forEach((charElement, charIndex) => {
+                    // Don't cycle if this position is already cracked
+                    if (crackedPositions.has(charIndex)) {
+                        charElement.textContent = currentPassword[charIndex];
+                        charElement.className = 'char-block';
+                        return;
+                    }
+                    
+                    // Different cycling speeds and patterns for each position
+                    const speed = 50 + (charIndex * 23 + rowIndex * 17) % 100;
+                    const offset = (charIndex * 7 + rowIndex * 11) % charSets.all.length;
+                    
+                    if (Math.random() < 0.3) { // 30% chance to update each cycle
+                        const charIndex2 = (Math.floor(Date.now() / speed) + offset) % charSets.all.length;
+                        charElement.textContent = charSets.all[charIndex2];
+                        
+                        // Occasionally show the correct character
+                        if (Math.random() < 0.05) {
+                            charElement.textContent = currentPassword[charIndex];
+                            charElement.className = 'char-block active';
+                            
+                            // Sometimes "lock in" the correct character
+                            if (Math.random() < 0.02) {
+                                crackedPositions.add(charIndex);
+                            }
+                        } else {
+                            charElement.className = 'char-block';
+                        }
+                    }
+                });
+            });
+            
+            attempts++;
+            updateStats();
+            
+            // Check if password is fully cracked
+            if (crackedPositions.size === currentPassword.length) {
+                setTimeout(() => {
+                    currentPasswordIndex = (currentPasswordIndex + 1) % passwords.length;
+                    currentPassword = passwords[currentPasswordIndex];
+                    crackedPositions.clear();
+                    createPasswordGrid();
+                }, 2000);
+            }
+        }
+        
+        function updateStats() {
+            const elapsed = (Date.now() - startTime) / 1000;
+            const speed = Math.floor(attempts / elapsed);
+            const progress = (crackedPositions.size / currentPassword.length) * 100;
+            
+            document.getElementById('attempts').textContent = attempts.toLocaleString();
+            document.getElementById('speed').textContent = speed.toLocaleString();
+            document.getElementById('time').textContent = formatTime(elapsed);
+            document.getElementById('progress').textContent = progress.toFixed(2);
+            document.getElementById('progressFill').style.width = progress + '%';
+        }
+        
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        function createMatrixBackground() {
+            const bg = document.getElementById('matrixBg');
+            for (let i = 0; i < 100; i++) {
+                const char = document.createElement('div');
+                char.style.position = 'absolute';
+                char.style.left = Math.random() * 100 + '%';
+                char.style.top = Math.random() * 100 + '%';
+                char.style.color = '#00ff41';
+                char.style.fontSize = '12px';
+                char.style.animation = `fall ${2 + Math.random() * 3}s linear infinite`;
+                char.textContent = charSets.matrix[Math.floor(Math.random() * charSets.matrix.length)];
+                bg.appendChild(char);
+                
+                // Add falling animation
+                char.style.setProperty('--start-y', '-20px');
+                char.style.setProperty('--end-y', '100vh');
+                char.style.animationDelay = Math.random() * 2 + 's';
+            }
+        }
+        
+        // Add CSS for falling animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fall {
+                from { transform: translateY(-20px); opacity: 1; }
+                to { transform: translateY(100vh); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Initialize
+        createPasswordGrid();
+        createMatrixBackground();
+        
+        // Start the chaos!
+        setInterval(cycleCharacters, 50); // Update every 50ms for maximum hectic-ness
+        
+        // Update matrix background periodically
+        setInterval(() => {
+            document.querySelectorAll('#matrixBg div').forEach(char => {
+                char.textContent = charSets.matrix[Math.floor(Math.random() * charSets.matrix.length)];
+            });
+        }, 200);
+    </script>
+</body>
+</html>
